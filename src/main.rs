@@ -10,16 +10,16 @@ use namada_sdk::{
 	wallet::fs::FsWalletUtils, 
 	masp::fs::FsShieldedUtils,
 	io::NullIo,
+	tx::data::ResultCode,
 	args::{InputAmount, TxBuilder},
 	signing::default_sign,
 	tendermint::abci::Code,
-	core::types::{
+	types::{
 		chain::ChainId,
 		address::Address,
 		masp::{TransferSource, TransferTarget},
-		key::{common::SecretKey, RefTo},
-		transaction::ResultCode
-	},
+		key::{common::SecretKey, RefTo}
+	}
 };
 
 #[tokio::main]
@@ -29,7 +29,12 @@ async fn main() {
 	let url = Url::from_str(&config.rpc).expect("invalid RPC address");
 	let http_client = HttpClient::new(url).unwrap();
 	let shielded_ctx = FsShieldedUtils::new("masp".into());
-	let wallet = FsWalletUtils::new("wallet".into());
+	// let wallet = FsWalletUtils::new("wallet".into());
+	let dir = "/Users/ekkis/Library/Application Support/Namada/local.6615cacd5792a2c8d73c537b/";
+	let mut wallet = FsWalletUtils::new(dir.into());
+	wallet.load().expect("Failed to load wallet");
+	
+	// println!("{:?}", &wallet);
 
 	let token = Address::decode(config.token.clone());
 	let token = if let Ok(address) = token {
@@ -43,6 +48,9 @@ async fn main() {
 	let source = Address::from(&sk.ref_to());
 	// print!("{} / {}", sk, source);
 
+	let bal = rpc::get_token_balance(&http_client, &token, &source).await;
+	println!("bal (nam)={:?}", bal);
+
 	let target = Address::decode(config.target.clone()	);
 	let target = if let Ok(address) = target {	// WTF is this?
 		address
@@ -54,22 +62,12 @@ async fn main() {
 		.expect("unable to initialize Namada context")
 		.chain_id(ChainId::from_str(&config.chain_id).unwrap());
 
-	let mut wallet = sdk.wallet.write().await;
-	let kp = wallet.insert_keypair(
-			"donor".to_string(),
-			false,
-			sk.clone(),
-			None,
-			Some(source.clone()),
-			None,
-		)
-		.unwrap();
-	println!("insert_keypair={:?}", kp);
-	
-	let keys = &wallet.get_secret_keys();
-	println!("keys={:?}", keys);
-	println!("balance={:?}", token::read_balance(&wallet, token, source).await);
-	drop(wallet);
+	let skfw = sdk.wallet.read().await.get_secret_keys()["donor"];
+	println!("{:?}", Address::from(&skfw.into()));
+	drop(sdk.wallet.write().await);
+
+	let native_token = rpc::query_native_token(sdk.client()).await.unwrap();
+	println!("native_token={:?}", native_token);
 
 	let amt = rpc::denominate_amount(
         sdk.client(),
