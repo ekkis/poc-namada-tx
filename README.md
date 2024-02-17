@@ -2,7 +2,11 @@
 
 In this document I will walk you through coding your first Namada transaction
 
-To be able to follow, you'll need some basic infrastructure.  Please refer to the [SETUP](SETUP.md) file before getting started and when everything is set up, let's create a new project (I've chosen to call it _poc-namada-tx_ but you can call it what you like):
+To be able to follow, you'll need some basic infrastructure.  Please refer to the [SETUP](SETUP.md) file before getting started and when everything is set up, come back
+
+## Basic Setup
+
+Let's create a new project (I've chosen to call it _poc-namada-tx_ but you can call it what you like):
 
 ```bash
 cargo new poc-namada-tx && cd $_
@@ -115,6 +119,8 @@ let http_client = HttpClient::new(url).unwrap();
 
 The first line converts the string we extracted from the environment file into a proper _url_ object, issuing an error if the string is not validly formatted, and uses that url to create an HTTP client. This client will later be given to our SDK object to call on
 
+## Wallet Setup
+
 Next we load the wallet we created using the CLI:
 
 ```rust
@@ -179,6 +185,8 @@ let sk = wallet.find_secret_key(config.source.clone(), None)
 let source = Address::from(&sk.ref_to());
 ```
 
+## Accessing the SDK
+
 We can now create an SDK object to use in building our transaction:
 ```rust
 // top of the file
@@ -204,6 +212,8 @@ Having handed the wallet to the SDK object, we no longer need it so we drop it:
 drop(sdk.wallet.write().await);
 ```
 
+## Amount Denomination
+
 We now denominate the amount to transfer, which includes proper designation of the token to transfer, and the amount involved.  Please note that the amount for the test is expressed in the environment file in cents (NAM tokens are divisible to 6 digits), therefore to transfer 1 NAM token we must indicate to the denominator function 1 x 10^6:
 
 ```rust
@@ -220,6 +230,8 @@ let amt = rpc::denominate_amount(
     config.amount.into(),
 ).await;
 ```
+
+## Building the Trasaction
 
 …which we can now build a transaction for:
 
@@ -275,6 +287,8 @@ sdk.sign(
 .expect("unable to sign reveal pk tx");
 ```
 
+## Submitting the Transaction
+
 Now we submit the transaction to the network and process the response, printing the status of the transaction and its hash to the console:
 
 ```rust
@@ -322,11 +336,4 @@ git clone https://github.com/ekkis/poc-namada-tx.git
 
 Software construction is never easy and certainly the complexity of building on decentralised platforms is dizzying. However, the choice of Rust as a language (and the richness of structures it provides) and Cosmos (a well architected ecosystem) help greatly in achieving functionality that wouldn't have been possible even a few years ago
 
-If you are a developer, it's a great time to be involved and certainly the crypto world is the cutting edge. I look forward to seeing zero-knowledge technology permeate the blockchain ecosystem in the same way that the EFF's HTTPS Everywhere³ campaign did the internet
-
----
-
-## Footnotes
-
-1. Cross-chain token transfers are accomplished using the Axelar infrastructure, an IBC (inter-blockchain communications) protocol implementation for Cosmos. This allows your tokens to travel across to any Cosmos blockchain, but even to Ethereum and other chains via bridges
-2. cf. https://www.eff.org/https-everywhere
+If you are a developer, it's a great time to be involved and certainly the crypto world is the cutting edge. I look forward to seeing zero-knowledge technology permeate the blockchain ecosystem in the same way that the EFF's HTTPS Everywhere campaign did the internet
