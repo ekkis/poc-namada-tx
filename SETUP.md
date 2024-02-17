@@ -162,7 +162,7 @@ Functionality on Namada is built on Rust, so you'll need the compiler installed.
 brew install rust
 ```
 
-# Upgrading your infrastructure
+## Upgrading Your Infrastructure
 
 As the network upgrades, you can keep up easily thanks to the [namada-selfhost](https://medium.com/r/?url=https%3A%2F%2Fgithub.com%2F0x4r45h%2Fnamada-selfhost) project. To upgrade should be as easy as (from the folder where you cloned the project):
 ```bash
