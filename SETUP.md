@@ -51,7 +51,7 @@ function namada_status() {
 namada_status |jq -r .sync_info.catching_up
 ```
 
-If you don't have `jq` installedd, Brew can do it for you:
+If you don't have `jq` installed, Brew can do it for you:
 
 ```bash
 brew install jq
