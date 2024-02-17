@@ -40,7 +40,7 @@ cd ..                 # don't forget this!
 
 and, if you look in the Docker Desktop app will look something like:
 
-![image](https://gist.github.com/assets/274980/ebb55c7b-ff04-448d-bfcb-89bae0277b49)
+![image](poc-namada-tx-docker.png)
 
 The chain will take a little while to come up (but it's far faster than running a public network which make take a much as 20 hours to sync) and you can check its status with the command below. When the result is `false`, you're ready to go!
 

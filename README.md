@@ -2,7 +2,7 @@
 
 In this document I will walk you through coding your first Namada transaction
 
-To be able to follow, you'll need some basic infrastructure.  Please refer to the [SETUP](SETUP.md) file before getting started and everything is set up, let's create a new project (I've chosen to call it _poc-namada-tx_ but you can call it what you like):
+To be able to follow, you'll need some basic infrastructure.  Please refer to the [SETUP](SETUP.md) file before getting started and when everything is set up, let's create a new project (I've chosen to call it _poc-namada-tx_ but you can call it what you like):
 
 ```bash
 cargo new poc-namada-tx && cd $_
