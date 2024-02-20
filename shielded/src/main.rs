@@ -1,7 +1,6 @@
 use dotenvy::dotenv;
 use std::{sync::Arc, str::FromStr};
 use clap::Parser;
-use namada_poc::{config::AppConfig};
 use tendermint_rpc::{HttpClient, Url};
 use namada_sdk::{
 	rpc,
@@ -17,14 +16,19 @@ use namada_sdk::{
 	types::{
 		chain::ChainId,
 		address::Address,
-		masp::{TransferSource, TransferTarget},
-		key::{RefTo}
+		masp::{TransferSource, TransferTarget, PaymentAddress},
 	}
 };
+use namada_poc::config::AppConfig;
 
 fn get_address(w: &Wallet<FsWalletUtils>, val: &String) -> Address {
 	let s = w.find_address(val).map(|addr| addr.to_string()).unwrap();
 	Address::decode(s).unwrap()
+}
+
+fn get_shielded_addr(w: &Wallet<FsWalletUtils>, val: &String) -> PaymentAddress {
+	let s = w.find_payment_addr(val).map(|addr| addr.to_string()).unwrap();
+	PaymentAddress::from_str(&*s).unwrap()
 }
 
 #[tokio::main]
@@ -40,32 +44,32 @@ async fn main() {
 	let basedir = format!("{}/{}/{}", std::env::var("HOME").unwrap(), basedir, &config.chain_id);
 	let mut wallet = FsWalletUtils::new(basedir.into());
 	wallet.load().expect("Failed to load wallet");
-	
+
 	// create a shielded context for our transactions
 
 	let shielded_ctx = FsShieldedUtils::new("masp".into());
 	
-	// get addresses for the NAM token and charity account
-	
-	let target = get_address(&wallet, &config.target);
-	let token = get_address(&wallet, &config.token);
+	// initialise the SDK object
 
-	// for the donor account we need the spending key
-
-	let sk = wallet.find_secret_key(config.source.clone(), None)
-		.expect("Unable to find key");
-	let source = Address::from(&sk.ref_to());
-	
-	// let bal = rpc::get_token_balance(&http_client, &token, &source).await;
-	// println!("bal (nam)={:?}", bal);
-
-	
 	let sdk = NamadaImpl::new(http_client, wallet, shielded_ctx, NullIo)
 		.await
 		.expect("unable to initialize Namada context")
 		.chain_id(ChainId::from_str(&config.chain_id).unwrap());
 
 	drop(sdk.wallet.write().await);
+
+	// get addresses for the NAM token and charity account
+	
+	let token = get_address(&wallet, &config.token);
+	let target = get_shielded_addr(&wallet, &config.target);
+
+	// for the donor account we need the spending key
+
+	let sk = wallet.find_spending_key(&config.source, None)
+		.expect("Unable to find key");
+	let pk = sk.to_public();
+
+	// construct a proper amount object
 
 	let amt = rpc::denominate_amount(
         sdk.client(),
@@ -75,12 +79,16 @@ async fn main() {
     )
     .await;
 
-	let mut transfer_tx_builder = sdk.new_transfer(	
-        TransferSource::Address(source),
-        TransferTarget::Address(target.clone()),
+	// and create a transfer builder
+
+	let mut transfer_tx_builder = sdk.new_transfer(
+		TransferSource::ExtendedSpendingKey(sk),
+        TransferTarget::PaymentAddress(target),
         token.clone(),
         InputAmount::Unvalidated(amt),
-    );
+    )
+	.signing_keys(vec![sk]);
+
 	let memo = String::from("{\"deliver-to\": \"101 Main Street, Lalaland, CA 91002\"}");
 	transfer_tx_builder.tx.memo = Some(memo.as_bytes().to_vec());
 

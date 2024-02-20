@@ -1,0 +1,51 @@
+export NAMADA_NODE=namada-selfhost-namada-1-1
+
+nm-status() {
+    curl -s http://127.0.0.1:26657/status |jq .result
+}
+
+nm-wallet() {
+    namada wallet gen --unsafe-dont-encrypt --alias $*
+}
+
+nm-payaddr() {
+    key=$1; shift
+    namadaw gen-payment-addr --key=$key --alias=$*
+}
+
+nm-wallets() {
+    namada wallet list
+}
+
+nm-addr() {
+    namada wallet list --addr |perl -ne 'print $1 if /"'$1'":\s+([tz]nam.*)/'
+}
+
+nm-pk() {
+    namadaw find --alias=$1 |perl -ne 'print $1 if /Public key:\s+(.*)/'
+}
+
+nm-bal() {
+    namada client balance --owner $*
+}
+
+nm-exec() {
+    docker exec -it $NAMADA_NODE /usr/local/bin/namada $*
+}
+
+nm-port() {
+    docker ps -f name=$NAMADA_NODE --format 'json {{.Ports}}' |perl -ne '/:(\d+)->'$1'/; print $1'
+}
+
+nm-chain() {
+    curl -sL $1 |perl -ne 'print $1 if /href="(.*?)\.tar.gz'
+}
+
+nm-fund() {
+    xfer="client transfer"
+    w="--source namada-1-wallet"
+    to="--target=$1"
+    amt="--amount=${2:-10}"
+    tok="--token=${3:-NAM}"
+    nm-exec $xfer $w $to $amt $tok
+}
