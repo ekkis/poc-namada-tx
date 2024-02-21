@@ -51,9 +51,9 @@ function nm-status() {
 nm-status |jq -r .sync_info.catching_up
 ```
 
-> Incidentally, you'll notice we decided to encapsulate use of the CLI into functions.  This allows us greater flexibility and brevity of expression in these tutorials, and we conveniently provide you with a library of these functions for your use in the `.cosmos` file in the root of this project, which you can source from your profile script like this:
+> Incidentally, you'll notice we decided to encapsulate use of the CLI into functions.  This allows us greater flexibility and brevity of expression in these tutorials, and we conveniently provide you with a library of these functions for your use in the `.namada` file in the root of this project, which you can source from your profile script like this:
 > ```bash
-> echo ". $PWD/.cosmos" >> ~/.bash_profile
+> echo ". $PWD/.namada" >> ~/.bash_profile
 > ```
 
 If you don't have `jq` installed, Brew can do it for you:
@@ -124,4 +124,4 @@ docker compose down -v # the -v removes old volumes
 docker compose up -d   # restart services
 ```
 
-However, don't forget to also update your CLI binaries and the SDK!
+However, don't forget to also update your CLI binaries and the SDK.  Also, restarting the chain generates a new chain id, so make sure you join the new chain with the CLI and that your apps know the new _chain_id_

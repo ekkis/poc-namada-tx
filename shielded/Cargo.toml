@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.31.0", default-features = false, features = ["tendermint-rpc", "std", "async-client", "async-send", "download-params", "rand"] }
+namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.31.0", default-features = false, features = ["tendermint-rpc", "std", "async-client", "async-send", "download-params", "rand", "multicore"] }
 clap = { version = "4.4.2", features = ["derive", "env"] }
 dotenvy = "0.15.7"
 tendermint-rpc = { version = "0.34.0", features = ["http-client"]}

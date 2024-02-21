@@ -347,7 +347,7 @@ use namada_sdk::{
 
 // call in main()
 
-let mut transfer_tx_builder = sdk.new_transfer( 
+let mut xfer = sdk.new_transfer( 
     TransferSource::Address(source),
     TransferTarget::Address(target.clone()),
     token.clone(),
@@ -359,7 +359,7 @@ and (nicely!) we can add arbitrary text data to the transaction, which means we 
 
 ```rust
 let memo = String::from("{\"deliver-to\": \"101 Main Street, Lalaland, CA 91002\"}");
-transfer_tx_builder.tx.memo = Some(memo.as_bytes().to_vec());
+xfer.tx.memo = Some(memo.as_bytes().to_vec());
 ```
 
 and now we can, finally, build the transaction and sign it:
@@ -371,14 +371,14 @@ use namada_sdk::signing::default_sign;
 
 // call in main()
 
-let (mut transfer_tx, signing_data, _epoch) = transfer_tx_builder
+let (mut transfer_tx, signing_data, _epoch) = xfer
     .build(&sdk)
     .await
     .expect("unable to build transfer");
     
 sdk.sign(
     &mut transfer_tx,
-    &transfer_tx_builder.tx,
+    &xfer.tx,
     signing_data,
     default_sign,
     (),
@@ -399,7 +399,7 @@ use namada_sdk::tendermint::abci::Code;
 // call in main()
 
 let process_tx_response = sdk
-  .submit(transfer_tx, &transfer_tx_builder.tx)
+  .submit(transfer_tx, &xfer.tx)
   .await;
 
 let (sent, tx_hash) = if let Ok(response) = process_tx_response {
@@ -425,4 +425,4 @@ The above should compile and run, performing a test transaction.  Now check the 
 nm-bal charity
 ```
 
-[« PREV](../README.md) | [NEXT »](../shielded/README.md)
+« [prev](../README.md) | [next](../shielded/README.md) »

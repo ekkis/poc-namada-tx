@@ -45,6 +45,22 @@ async fn main() {
 	let mut wallet = FsWalletUtils::new(basedir.into());
 	wallet.load().expect("Failed to load wallet");
 
+	// get addresses for the NAM token and merchant account
+	
+	let token = get_address(&wallet, &config.token);
+	let target = get_shielded_addr(&wallet, &config.target);
+
+	// for the customer account we need the spending key
+	
+	let sk = wallet.find_spending_key(&config.source, None)
+		.expect("Unable to find key");
+
+	// and let's get the public key for the donor account
+	// to allow us to pay for transactions
+
+	let pk = wallet.find_public_key("donor")
+		.expect("Unable to find key");
+
 	// create a shielded context for our transactions
 
 	let shielded_ctx = FsShieldedUtils::new("masp".into());
@@ -55,19 +71,6 @@ async fn main() {
 		.await
 		.expect("unable to initialize Namada context")
 		.chain_id(ChainId::from_str(&config.chain_id).unwrap());
-
-	drop(sdk.wallet.write().await);
-
-	// get addresses for the NAM token and charity account
-	
-	let token = get_address(&wallet, &config.token);
-	let target = get_shielded_addr(&wallet, &config.target);
-
-	// for the donor account we need the spending key
-
-	let sk = wallet.find_spending_key(&config.source, None)
-		.expect("Unable to find key");
-	let pk = sk.to_public();
 
 	// construct a proper amount object
 
@@ -81,25 +84,28 @@ async fn main() {
 
 	// and create a transfer builder
 
-	let mut transfer_tx_builder = sdk.new_transfer(
+	let mut xfer = sdk.new_transfer(
 		TransferSource::ExtendedSpendingKey(sk),
         TransferTarget::PaymentAddress(target),
         token.clone(),
         InputAmount::Unvalidated(amt),
     )
-	.signing_keys(vec![sk]);
-
+	.signing_keys(vec![pk]);
+	
+	// xfer.tx.disposable_signing_key = true;
+	// xfer.tx.fee_unshield = Some(TransferSource::ExtendedSpendingKey(sk));
+	
 	let memo = String::from("{\"deliver-to\": \"101 Main Street, Lalaland, CA 91002\"}");
-	transfer_tx_builder.tx.memo = Some(memo.as_bytes().to_vec());
+	xfer.tx.memo = Some(memo.as_bytes().to_vec());
 
-	let (mut transfer_tx, signing_data, _epoch) = transfer_tx_builder
+	let (mut transfer_tx, signing_data, _epoch) = xfer
         .build(&sdk)
         .await
         .expect("unable to build transfer");
 
     sdk.sign(
 		&mut transfer_tx,
-		&transfer_tx_builder.tx,
+		&xfer.tx,
 		signing_data,
 		default_sign,
 		(),
@@ -107,8 +113,8 @@ async fn main() {
 	.await
 	.expect("unable to sign reveal pk tx");
 
-    let process_tx_response = sdk.submit(transfer_tx, &transfer_tx_builder.tx).await;
-	println!("response={:?}", process_tx_response);
+    let process_tx_response = sdk.submit(transfer_tx, &xfer.tx).await;
+	// println!("response={:?}", process_tx_response);
 
 	let (sent, tx_hash) = if let Ok(response) = process_tx_response {
         match response {

@@ -77,16 +77,16 @@ async fn main() {
 
 	// create a transaction builder
 
-	let mut transfer_tx_builder = sdk.new_transfer(	
+	let mut xfer = sdk.new_transfer(	
         TransferSource::Address(source),
         TransferTarget::Address(target.clone()),
         token.clone(),
         InputAmount::Unvalidated(amt),
     );
 	let memo = String::from("{\"deliver-to\": \"101 Main Street, Lalaland, CA 91002\"}");
-	transfer_tx_builder.tx.memo = Some(memo.as_bytes().to_vec());
+	xfer.tx.memo = Some(memo.as_bytes().to_vec());
 
-	let (mut transfer_tx, signing_data, _epoch) = transfer_tx_builder
+	let (mut transfer_tx, signing_data, _epoch) = xfer
         .build(&sdk)
         .await
         .expect("unable to build transfer");
@@ -95,7 +95,7 @@ async fn main() {
 
     sdk.sign(
 		&mut transfer_tx,
-		&transfer_tx_builder.tx,
+		&xfer.tx,
 		signing_data,
 		default_sign,
 		(),
@@ -105,8 +105,8 @@ async fn main() {
 
 	// broadcast the transaction to the network
 
-    let process_tx_response = sdk.submit(transfer_tx, &transfer_tx_builder.tx).await;
-	println!("response={:?}", process_tx_response);
+    let process_tx_response = sdk.submit(transfer_tx, &xfer.tx).await;
+	// println!("response={:?}", process_tx_response);
 
 	// process the result
 

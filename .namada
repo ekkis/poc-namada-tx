@@ -5,7 +5,7 @@ nm-status() {
 }
 
 nm-wallet() {
-    namada wallet gen --unsafe-dont-encrypt --alias $*
+    namadaw gen --unsafe-dont-encrypt --alias $*
 }
 
 nm-payaddr() {
@@ -14,11 +14,11 @@ nm-payaddr() {
 }
 
 nm-wallets() {
-    namada wallet list
+    namadaw list
 }
 
 nm-addr() {
-    namada wallet list --addr |perl -ne 'print $1 if /"'$1'":\s+([tz]nam.*)/'
+    namadaw list --addr |perl -ne 'print $1 if /"'$1'".*:\s+([tz]nam.*)/'
 }
 
 nm-pk() {
@@ -26,7 +26,7 @@ nm-pk() {
 }
 
 nm-bal() {
-    namada client balance --owner $*
+    namadac balance --owner $*
 }
 
 nm-exec() {
@@ -38,7 +38,7 @@ nm-port() {
 }
 
 nm-chain() {
-    curl -sL $1 |perl -ne 'print $1 if /href="(.*?)\.tar.gz'
+    curl -sL $1 |perl -ne 'print $1 if /href="(.*?)\.tar.gz/'
 }
 
 nm-fund() {
