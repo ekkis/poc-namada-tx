@@ -34,6 +34,8 @@ fn get_shielded_addr(w: &Wallet<FsWalletUtils>, val: &String) -> PaymentAddress 
 #[tokio::main]
 async fn main() {
 	dotenv().ok(); // read environment file
+	let fee_payer = std::env::var("FEEPAYER").unwrap();
+
 	let config = Arc::new(AppConfig::parse());
 	let url = Url::from_str(&config.rpc).expect("invalid RPC address");
 	let http_client = HttpClient::new(url).unwrap();
@@ -55,11 +57,10 @@ async fn main() {
 	let sk = wallet.find_spending_key(&config.source, None)
 		.expect("Unable to find key");
 
-	// and let's get the public key for the donor account
+	// and let's get the public key for the fee payer account
 	// to allow us to pay for transactions
-
-	let pk = wallet.find_public_key("donor")
-		.expect("Unable to find key");
+	
+	let pk = wallet.find_public_key(&fee_payer);
 
 	// create a shielded context for our transactions
 
@@ -89,11 +90,14 @@ async fn main() {
         TransferTarget::PaymentAddress(target),
         token.clone(),
         InputAmount::Unvalidated(amt),
-    )
-	.signing_keys(vec![pk]);
-	
-	// xfer.tx.disposable_signing_key = true;
-	// xfer.tx.fee_unshield = Some(TransferSource::ExtendedSpendingKey(sk));
+	);
+
+	if pk.is_ok() {
+		xfer.clone().signing_keys(vec![pk.unwrap()]);
+	} else {
+		xfer.tx.disposable_signing_key = true;
+		xfer.tx.fee_unshield = Some(TransferSource::ExtendedSpendingKey(sk));
+	}
 	
 	let memo = String::from("{\"deliver-to\": \"101 Main Street, Lalaland, CA 91002\"}");
 	xfer.tx.memo = Some(memo.as_bytes().to_vec());

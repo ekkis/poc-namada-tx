@@ -60,7 +60,7 @@ namada_sdk = { git = "https://github.com/anoma/namada", tag = "v0.31.0", default
 
 ## Shielding the transaction
 
-To handle shielded addresses we need to create a new function:
+Shielded transactions use *payment addresses*, so we need to create a new function to retrieve these:
 
 ```rust
 // top of file
@@ -75,7 +75,7 @@ fn get_shielded_addr(w: &Wallet<FsWalletUtils>, val: &String) -> PaymentAddress 
 }
 ```
 
-...and we then get the shielded address for the TARGET:
+...and that allows us to get the shielded address for the TARGET:
 
 ```rust
 let target = get_shielded_addr(&wallet, &config.target);
@@ -99,64 +99,60 @@ let mut xfer = sdk.new_transfer(
 );
 ```
 
-But there's one more thing: typically the account that signs the transaction (the one that holds funds being sent) also pays for the transaction fees.  We can do that for shielded transactions as shown below but it makes the processing more costly as it requires the system to perform 2 transactions:
+## Transaction Fees
+
+On normal blockchains it is typical for the account that signs the transaction (the one that holds the funds being sent) to pay network fees.  We can do that for shielded transactions but it makes the processing more costly (on my workstation the length of time increased from ~3min to ~13min) as fees have to be paid from a transparent address and we thus force the system to first unshield the fee -- in essence performing a second transaction
+
+Alternatively we can pay the fees from a transparent account, which may make sense for your app if you collect fees from users anyway as a portion of these can then be allocated to paying network fees for your users
+
+Our code can thus behave in one of two ways.  Let's indicate that via an environment variable.  Add the following line to `main()` right after the call to `dotenv()`:
 
 ```rust
-xfer.tx.disposable_signing_key = true;
-xfer.tx.fee_unshield = Some(TransferSource::ExtendedSpendingKey(sk));
+let fee_payer = std::env::var("FEEPAYER").unwrap();
 ```
 
-> if you find your transactions failing, it may have to do with an issue where the VP (validity predicate) rejects the transaction because it was started in one epoch and ended in another
-> 
-> The Namada chain defines epochs to be 1s long, however that can be reconfigured by editing the `config/genesis/parameters.toml` file, found in the directory where you cloned the *namada-selfhost* project, as follows (in my setup I made epochs 10s long):
-> 
-> ```toml
-> epochs_per_year = 3_153_600
-> ```
-
-## Paying Fees From a Transparent Account
-
-In Cosmos, there's an alternative to paying fees from the sender's account: you can designate a *transparent* account as the payee of the fees
-
-This may make sense for your app if your app collects fees from users, as it can then allocate some portion of those funds to pay for user transactions
-
-It also makes transactions faster (on my workstation the length of time reduced to ~3min from ~13min)
-
-To accomplish that, let's use the *donor* account created in the previous tutorial and replace the transfer call with the following:
+and we'll need to (optionally) pick up the public key for any account passed in.  Add this somewhere before the creation of the SDK object:
 
 ```rust
-let pk = wallet.find_public_key("donor")
-    .expect("Unable to find key");
-
-let mut xfer = sdk.new_transfer(
-    TransferSource::ExtendedSpendingKey(sk),
-    TransferTarget::PaymentAddress(target),
-    token.clone(),
-    InputAmount::Unvalidated(amt),
-)
-.signing_keys(vec![pk]);
+let pk = wallet.find_public_key(&fee_payer);
 ```
 
-Running the test:
+...and now we can add the following lines after creating the transfer object:
+
+```rust
+if pk.is_ok() {
+    xfer.clone().signing_keys(vec![pk.unwrap()]);
+} else {
+    xfer.tx.disposable_signing_key = true;
+    xfer.tx.fee_unshield = Some(TransferSource::ExtendedSpendingKey(sk));
+}
+```
+
+so that if a pay account is specified, we add its public key to the list of signing keys for the transaction, and if it's not, we indicate to the SDK that it should use a disposable signing key and we provide the extended spending key for the sender
+
+We can now run our test using the *donor* account from the previous tutorial (which should have 9 NAM), or by using the sender to pay for the fees like this:
 
 ```bash
-$ time cargo run
+FEEPAYER=donor cargo run # uses the transparent payer account
+```
+or
+```bash
+FEEPAYER= cargo run # uses the sender account to pay fees
 ```
 
-should produce output similar to this:
-
-> Compiling namada-poc v0.1.0 (/Users/.../tx/shielded)
-> Finished dev [unoptimized + debuginfo] target(s) in 16.49s
-> Running `target/debug/namada-poc`
-
-> sent: true
-> tx: EF5ED5F1EF697EA5BB0DF9508FFC97025AC363668990B45A708A802EDDF98187
-
-> real	3m5.870s
-> user	4m58.349s
-> sys	0m3.427s
-
-
+> When using the sender account to pay for fees, if you find your transactions failing, it may have to do with an issue where the VP (validity predicate) rejects the transaction because it was started in one epoch but ended in another
 > 
+> The configuration in the Campfire chain we're running defines epochs to be 1s long, however we should set that to match the value used in the [Shielded Expedition](https://namada.net/blog/the-namada-shielded-expedition) chain, which is 12 hours
+> 
+> To change that value edit the `config/genesis/parameters.toml` file, found in the directory where you cloned the *namada-selfhost* project, as follows (in my setup I made epochs 10s long):
+> 
+> ```toml
+> epochs_per_year = 730
+> ```
+>
+> ...and restart the chain
+> ```bash
+> docker compose restart
+> ```
 
 « [prev](../simple/README.md) | [next](../IBC/README.md) »
